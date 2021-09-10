@@ -9,7 +9,7 @@ export interface DavatarProps {
   size: number;
   address: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  provider: any;
+  provider?: any;
 }
 
 export default function Davatar({ size, address, provider }: DavatarProps) {
