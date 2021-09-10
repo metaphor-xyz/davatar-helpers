@@ -1,0 +1,32 @@
+import { ethers } from 'ethers';
+import React, { useEffect, useState } from 'react';
+
+import Avatar from './Avatar';
+
+export interface DavatarProps {
+  size: number;
+  address: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  provider: any;
+}
+
+export default function Davatar({ size, address, provider }: DavatarProps) {
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    const eth = provider ? new ethers.providers.Web3Provider(provider) : ethers.getDefaultProvider();
+    eth.lookupAddress(address).then(ensName => {
+      if (ensName) {
+        eth.getResolver(ensName).then(resolver => {
+          resolver.getText('avatar').then(avatar => {
+            if (avatar && avatar.length > 0) {
+              setAvatarUri(avatar);
+            }
+          });
+        });
+      }
+    });
+  }, [address, provider]);
+
+  return <Avatar size={size} address={address} uri={avatarUri} />;
+}

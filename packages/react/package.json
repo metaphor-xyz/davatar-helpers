@@ -1,0 +1,26 @@
+{
+  "name": "@davatar/react",
+  "version": "1.0.0",
+  "description": "A Web3 ENS-based avatar implementation for React",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "author": "TBDAO",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/color": "^3.0.2",
+    "@types/mersenne-twister": "^1.1.2",
+    "@types/react": "^17.0.20",
+    "react": "^17.0.2",
+    "typescript": "^4.4.2"
+  },
+  "peerDependencies": {
+    "react": "^17.0.2"
+  },
+  "dependencies": {
+    "color": "^3.2.1",
+    "ethers": "^5.4.6",
+    "mersenne-twister": "^1.1.0"
+  }
+}
