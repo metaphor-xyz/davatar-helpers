@@ -6,7 +6,7 @@ This library provides components that make it easy to display decentralized avat
 ### Davatar
 The `<Davatar />` component takes an Ethereum address, the desired avatar size, and an optional Web3 provider and displays the avatar attached to the ENS reverse record assigned to the address, if it exists. Otherwise, it displays the Jazzicon for the address.
 
-```react
+```jsx
 // ...
   return (
     <Davatar
@@ -26,7 +26,7 @@ The `<Image />` component takes an image URI, avatar size, and an optional Ether
 - Arweave (ar://), with support for `Origin` "mutability" tags
 - Data URLs
 
-```react
+```jsx
 // ...
   return (
     <Image
