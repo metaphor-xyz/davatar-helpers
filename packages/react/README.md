@@ -1,6 +1,16 @@
 # @davatar/react
 This library provides components that make it easy to display decentralized avatars in Web3 applications.
 
+## Install
+
+```
+npm install --save @davatar/react
+
+- or -
+
+yarn add @davatar/react
+```
+
 ## Components
 
 ### Davatar
