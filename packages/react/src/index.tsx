@@ -1,7 +1,9 @@
 import { ethers } from 'ethers';
 import React, { useEffect, useState } from 'react';
 
-import Avatar from './Avatar';
+import Image from './Image';
+
+export { default as Image } from './Image';
 
 export interface DavatarProps {
   size: number;
@@ -28,5 +30,5 @@ export default function Davatar({ size, address, provider }: DavatarProps) {
     });
   }, [address, provider]);
 
-  return <Avatar size={size} address={address} uri={avatarUri} />;
+  return <Image size={size} address={address} uri={avatarUri} />;
 }
