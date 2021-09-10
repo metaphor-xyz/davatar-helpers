@@ -1,6 +1,6 @@
 {
   "name": "@davatar/react",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "A Web3 ENS-based avatar implementation for React",
   "homepage": "https://github.com/TBDAO/davatar-helpers",
   "repository": {
