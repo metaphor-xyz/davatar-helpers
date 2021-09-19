@@ -8,9 +8,11 @@ export interface Props {
   address?: string | null;
   style?: CSSProperties;
   className?: string;
+  // 698d3c5351720e4ca3a363dbd33d76d2
+  graphApiKey?: string;
 }
 
-export default function Avatar({ uri, style, className, size, address }: Props) {
+export default function Avatar({ uri, style, className, size, address, graphApiKey }: Props) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -19,6 +21,8 @@ export default function Avatar({ uri, style, className, size, address }: Props) 
     }
 
     const match = new RegExp(/([a-z]+):\/\/(.*)/).exec(uri);
+    const nftMatch = new RegExp(/eip155:1\/erc721:(\w+)\/(\w+)/).exec(uri);
+
     if (match && match.length === 3) {
       const protocol = match[1];
       const id = match[2];
@@ -98,10 +102,72 @@ export default function Avatar({ uri, style, className, size, address }: Props) 
           setUrl(uri);
           break;
       }
+    } else if (graphApiKey && address && nftMatch && nftMatch.length === 3) {
+      const contractId = nftMatch[1];
+      const tokenId = parseInt(nftMatch[2]).toString(16);
+      const normalizedAddress = address.toLowerCase();
+      const cacheKey = `${normalizedAddress}/${contractId}/0x${tokenId}`;
+      const cachedItem = window.localStorage.getItem(cacheKey);
+
+      if (cachedItem) {
+        const item = JSON.parse(cachedItem);
+
+        if (new Date(item.expiresAt) > new Date()) {
+          setUrl(item.url);
+          return;
+        }
+      }
+
+      // erc721 subgraph
+      fetch(
+        `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/0x7859821024e633c5dc8a4fcf86fc52e7720ce525-0`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json;charset=UTF-8',
+          },
+          body: JSON.stringify({
+            query: `
+          {
+            erc721Token(id: "${contractId}/0x${tokenId}") {
+              id
+              owner {
+                id
+              }
+              uri
+            }
+          }
+          `,
+          }),
+        }
+      )
+        .then(res => res.json())
+        .then(async res => {
+          if (!res.data || !res.data.erc721Token) {
+            throw new Error('invalid ERC721 token');
+          }
+
+          const token = res.data.erc721Token;
+
+          if (token.owner.id.toLowerCase() !== normalizedAddress) {
+            throw new Error('ERC721 token not owned by address');
+          }
+
+          return token;
+        })
+        .then(token => fetch(token.uri))
+        .then(res => res.json())
+        .then(data => {
+          // 24 hour TTL
+          const expireDate = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
+
+          window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
+          setUrl(data.image);
+        });
     } else {
       setUrl(uri);
     }
-  }, [uri]);
+  }, [uri, address, graphApiKey]);
 
   if (!url) {
     if (address) {
