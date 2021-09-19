@@ -1,4 +1,4 @@
-import React, { useState, useEffect, CSSProperties } from 'react';
+import React, { useState, useEffect, useCallback, CSSProperties } from 'react';
 
 import Jazzicon from './Jazzicon';
 
@@ -14,6 +14,7 @@ export interface Props {
 
 export default function Avatar({ uri, style, className, size, address, graphApiKey }: Props) {
   const [url, setUrl] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!uri) {
@@ -173,20 +174,25 @@ export default function Avatar({ uri, style, className, size, address, graphApiK
     }
   }, [uri, address, graphApiKey]);
 
-  if (!url) {
-    if (address) {
-      return <Jazzicon address={address} size={size} />;
-    } else {
-      return null;
-    }
-  }
+  const onLoad = useCallback(() => setLoaded(true), []);
+  let avatarImg = null;
 
   const cssStyle = {
+    display: loaded ? undefined : 'none',
     width: `${size}px`,
     height: `${size}px`,
     borderRadius: `${size}px`,
     ...(style || {}),
   };
 
-  return <img alt="avatar" style={cssStyle} className={className} src={url} />;
+  if (url) {
+    avatarImg = <img alt="avatar" style={cssStyle} className={className} src={url} onLoad={onLoad} />;
+  }
+
+  return (
+    <>
+      {(!url || !loaded) && address && <Jazzicon address={address} size={size} />}
+      {avatarImg}
+    </>
+  );
 }
