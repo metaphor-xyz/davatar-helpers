@@ -1,4 +1,4 @@
-import React, { useState, useEffect, CSSProperties } from 'react';
+import React, { useState, useEffect, useCallback, CSSProperties } from 'react';
 
 import Jazzicon from './Jazzicon';
 
@@ -14,6 +14,7 @@ export interface Props {
 
 export default function Avatar({ uri, style, className, size, address, graphApiKey }: Props) {
   const [url, setUrl] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!uri) {
@@ -102,7 +103,7 @@ export default function Avatar({ uri, style, className, size, address, graphApiK
           setUrl(uri);
           break;
       }
-    } else if (graphApiKey && address && nftMatch && nftMatch.length === 3) {
+    } else if (address && nftMatch && nftMatch.length === 3) {
       const contractId = nftMatch[1];
       const tokenId = parseInt(nftMatch[2]).toString(16);
       const normalizedAddress = address.toLowerCase();
@@ -118,9 +119,13 @@ export default function Avatar({ uri, style, className, size, address, graphApiK
         }
       }
 
+      const tokenField = graphApiKey ? 'erc721Token' : 'token';
+
       // erc721 subgraph
       fetch(
-        `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/0x7859821024e633c5dc8a4fcf86fc52e7720ce525-0`,
+        graphApiKey
+          ? `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/0x7859821024e633c5dc8a4fcf86fc52e7720ce525-0`
+          : `https://api.thegraph.com/subgraphs/name/amxx/eip721-subgraph`,
         {
           method: 'POST',
           headers: {
@@ -129,7 +134,7 @@ export default function Avatar({ uri, style, className, size, address, graphApiK
           body: JSON.stringify({
             query: `
           {
-            erc721Token(id: "${contractId}/0x${tokenId}") {
+            ${tokenField}(id: "${contractId}${graphApiKey ? '/' : '-'}0x${tokenId}") {
               id
               owner {
                 id
@@ -143,11 +148,11 @@ export default function Avatar({ uri, style, className, size, address, graphApiK
       )
         .then(res => res.json())
         .then(async res => {
-          if (!res.data || !res.data.erc721Token) {
+          if (!res.data || !res.data[tokenField]) {
             throw new Error('invalid ERC721 token');
           }
 
-          const token = res.data.erc721Token;
+          const token = res.data[tokenField];
 
           if (token.owner.id.toLowerCase() !== normalizedAddress) {
             throw new Error('ERC721 token not owned by address');
@@ -169,20 +174,25 @@ export default function Avatar({ uri, style, className, size, address, graphApiK
     }
   }, [uri, address, graphApiKey]);
 
-  if (!url) {
-    if (address) {
-      return <Jazzicon address={address} size={size} />;
-    } else {
-      return null;
-    }
-  }
+  const onLoad = useCallback(() => setLoaded(true), []);
+  let avatarImg = null;
 
   const cssStyle = {
+    display: loaded ? undefined : 'none',
     width: `${size}px`,
     height: `${size}px`,
     borderRadius: `${size}px`,
     ...(style || {}),
   };
 
-  return <img alt="avatar" style={cssStyle} className={className} src={url} />;
+  if (url) {
+    avatarImg = <img alt="avatar" style={cssStyle} className={className} src={url} onLoad={onLoad} />;
+  }
+
+  return (
+    <>
+      {(!url || !loaded) && address && <Jazzicon address={address} size={size} />}
+      {avatarImg}
+    </>
+  );
 }
