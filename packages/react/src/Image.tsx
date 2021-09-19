@@ -168,7 +168,8 @@ export default function Avatar({ uri, style, className, size, address, graphApiK
 
           window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
           setUrl(data.image);
-        });
+        })
+        .catch(e => console.error(e)); // eslint-disable-line
     } else {
       setUrl(uri);
     }
