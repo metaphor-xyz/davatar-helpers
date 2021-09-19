@@ -10,13 +10,14 @@ export interface DavatarProps {
   address: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   provider?: any;
+  graphApiKey?: string;
 }
 
-export default function Davatar({ size, address, provider }: DavatarProps) {
+export default function Davatar({ size, address, provider, graphApiKey }: DavatarProps) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   useEffect(() => {
-    const eth = provider ? new ethers.providers.Web3Provider(provider) : ethers.getDefaultProvider();
+    const eth = provider ? new ethers.providers.Web3Provider(provider) : ethers.getDefaultProvider('ropsten');
     eth.lookupAddress(address).then(ensName => {
       if (ensName) {
         eth.getResolver(ensName).then(resolver => {
@@ -30,5 +31,5 @@ export default function Davatar({ size, address, provider }: DavatarProps) {
     });
   }, [address, provider]);
 
-  return <Image size={size} address={address} uri={avatarUri} />;
+  return <Image size={size} address={address} uri={avatarUri} graphApiKey={graphApiKey} />;
 }
