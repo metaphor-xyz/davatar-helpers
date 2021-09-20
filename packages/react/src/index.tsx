@@ -17,7 +17,7 @@ export default function Davatar({ size, address, provider, graphApiKey }: Davata
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   useEffect(() => {
-    const eth = provider ? new ethers.providers.Web3Provider(provider) : ethers.getDefaultProvider('ropsten');
+    const eth = provider ? new ethers.providers.Web3Provider(provider) : ethers.getDefaultProvider();
     eth.lookupAddress(address).then(ensName => {
       if (ensName) {
         eth.getResolver(ensName).then(resolver => {
