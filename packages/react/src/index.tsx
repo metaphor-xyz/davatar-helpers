@@ -11,9 +11,10 @@ export interface DavatarProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   provider?: any;
   graphApiKey?: string;
+  generatedAvatarType?: 'jazzicon' | 'blockies';
 }
 
-export default function Davatar({ size, address, provider, graphApiKey }: DavatarProps) {
+export default function Davatar({ size, address, provider, graphApiKey, generatedAvatarType }: DavatarProps) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,5 +32,13 @@ export default function Davatar({ size, address, provider, graphApiKey }: Davata
     });
   }, [address, provider]);
 
-  return <Image size={size} address={address} uri={avatarUri} graphApiKey={graphApiKey} />;
+  return (
+    <Image
+      size={size}
+      address={address}
+      uri={avatarUri}
+      graphApiKey={graphApiKey}
+      generatedAvatarType={generatedAvatarType}
+    />
+  );
 }

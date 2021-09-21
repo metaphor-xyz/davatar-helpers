@@ -24,6 +24,7 @@ The `<Davatar />` component takes an Ethereum address, the desired avatar size, 
       address='0x00000000000000000000000'
       provider={provider} // optional
       graphApiKey={apiKey} // optional
+      generatedAvatarType='jazzicon' // optional, 'jazzicon' or 'blockies'
     />
   );
 // ...
@@ -45,6 +46,7 @@ The `<Image />` component takes an image URI, avatar size, and an optional Ether
       address='0x00000000000000000000000'
       uri='ar://0dbf9uwer8gw7efrg9bwe08r9v90ew8'
       graphApiKey={apiKey} // optional
+      generatedAvatarType='jazzicon' // optional, 'jazzicon' or 'blockies'
     />
   );
 // ...
