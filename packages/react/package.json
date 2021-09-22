@@ -24,9 +24,9 @@
     "react": ">=16.8"
   },
   "dependencies": {
+    "@ethersproject/providers": "^5.4.5",
     "@types/react-blockies": "^1.4.1",
     "color": "^3.2.1",
-    "ethers": "^5.4.6",
     "mersenne-twister": "^1.1.0",
     "react-blockies": "^1.4.1"
   }
