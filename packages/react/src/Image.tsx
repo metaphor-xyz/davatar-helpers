@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, CSSProperties } from 'react';
+import React, { useState, useEffect, useCallback, CSSProperties, ReactChild } from 'react';
 
 import Blockies from './Blockies';
 import Jazzicon from './Jazzicon';
@@ -12,9 +12,19 @@ export interface Props {
   // 698d3c5351720e4ca3a363dbd33d76d2
   graphApiKey?: string;
   generatedAvatarType?: 'jazzicon' | 'blockies';
+  defaultComponent?: ReactChild | ReactChild[];
 }
 
-export default function Avatar({ uri, style, className, size, address, graphApiKey, generatedAvatarType }: Props) {
+export default function Avatar({
+  uri,
+  style,
+  className,
+  size,
+  address,
+  graphApiKey,
+  generatedAvatarType,
+  defaultComponent,
+}: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -195,11 +205,12 @@ export default function Avatar({ uri, style, className, size, address, graphApiK
   const defaultAvatar =
     (!url || !loaded) &&
     address &&
-    (generatedAvatarType === 'blockies' ? (
-      <Blockies address={address} size={size} />
-    ) : (
-      <Jazzicon address={address} size={size} />
-    ));
+    (defaultComponent ||
+      (generatedAvatarType === 'blockies' ? (
+        <Blockies address={address} size={size} />
+      ) : (
+        <Jazzicon address={address} size={size} />
+      )));
 
   return (
     <>
