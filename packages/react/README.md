@@ -31,7 +31,7 @@ The `<Davatar />` component takes an Ethereum address, the desired avatar size, 
 ```
 
 ### Image
-The `<Image />` component takes an image URI, avatar size, and an optional Ethereum address, and displays the image from the URI. If the URI is undefined or null, and the address is specified, it displays a Jazzicon. It supports the following URI types:
+If you know the avatar URI ([available URI types](https://gist.github.com/Arachnid/9db60bd75277969ee1689c8742b75182#uri-types)), you can use the `<Image />` component which takes an image URI, avatar size, and an optional Ethereum address, and displays the image from the URI. If the URI is undefined or null, and the address is specified, it displays a Jazzicon. It supports the following URI types:
 
 - HTTP(S)
 - IPFS/IPNS
