@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { Web3Provider, getDefaultProvider } from '@ethersproject/providers';
 import React, { useEffect, useState, ReactChild } from 'react';
 
 import Image from './Image';
@@ -26,7 +26,7 @@ export default function Davatar({
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   useEffect(() => {
-    const eth = provider ? new ethers.providers.Web3Provider(provider) : ethers.getDefaultProvider();
+    const eth = provider ? new Web3Provider(provider) : getDefaultProvider();
     eth.lookupAddress(address).then(ensName => {
       if (ensName) {
         eth.getResolver(ensName).then(resolver => {
