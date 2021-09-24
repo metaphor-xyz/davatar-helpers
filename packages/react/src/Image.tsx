@@ -15,6 +15,39 @@ export interface Props {
   defaultComponent?: ReactChild | ReactChild[];
 }
 
+const getGatewayUrl = (uri: string): string => {
+  const match = new RegExp(/([a-z]+)(?::\/\/|\/)(.*)/).exec(uri);
+
+  if (!match || match.length < 3) {
+    return uri;
+  }
+
+  const id = match[2];
+
+  switch (match[1]) {
+    case 'ar': {
+      return `https://arweave.net/${id}`;
+    }
+    case 'ipfs':
+      if (id.includes('ipfs') || id.includes('ipns')) {
+        return `https://gateway.ipfs.io/${id}`;
+      } else {
+        return `https://gateway.ipfs.io/ipfs/${id}`;
+      }
+    case 'ipns':
+      if (id.includes('ipfs') || id.includes('ipns')) {
+        return `https://gateway.ipfs.io/${id}`;
+      } else {
+        return `https://gateway.ipfs.io/ipns/${id}`;
+      }
+    case 'http':
+    case 'https':
+      return uri;
+  }
+
+  return uri;
+};
+
 export default function Avatar({
   uri,
   style,
@@ -34,7 +67,8 @@ export default function Avatar({
     }
 
     const match = new RegExp(/([a-z]+):\/\/(.*)/).exec(uri);
-    const nftMatch = new RegExp(/eip155:1\/erc721:(\w+)\/(\w+)/).exec(uri);
+    const match721 = new RegExp(/eip155:1\/erc721:(\w+)\/(\w+)/).exec(uri);
+    const match1155 = new RegExp(/eip155:1\/erc1155:(\w+)\/(\w+)/).exec(uri);
 
     if (match && match.length === 3) {
       const protocol = match[1];
@@ -115,9 +149,9 @@ export default function Avatar({
           setUrl(uri);
           break;
       }
-    } else if (address && nftMatch && nftMatch.length === 3) {
-      const contractId = nftMatch[1];
-      const tokenId = parseInt(nftMatch[2]).toString(16);
+    } else if (address && match721 && match721.length === 3) {
+      const contractId = match721[1];
+      const tokenId = parseInt(match721[2]).toString(16);
       const normalizedAddress = address.toLowerCase();
       const cacheKey = `${normalizedAddress}/${contractId}/0x${tokenId}`;
       const cachedItem = window.localStorage.getItem(cacheKey);
@@ -126,7 +160,7 @@ export default function Avatar({
         const item = JSON.parse(cachedItem);
 
         if (new Date(item.expiresAt) > new Date()) {
-          setUrl(item.url);
+          setUrl(getGatewayUrl(item.url));
           return;
         }
       }
@@ -172,18 +206,88 @@ export default function Avatar({
 
           return token;
         })
-        .then(token => fetch(token.uri))
+        .then(token => fetch(getGatewayUrl(token.uri)))
         .then(res => res.json())
         .then(data => {
           // 24 hour TTL
           const expireDate = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
 
           window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
-          setUrl(data.image);
+          setUrl(getGatewayUrl(data.image));
+        })
+        .catch(e => console.error(e)); // eslint-disable-line
+    } else if (address && match1155 && match1155.length === 3) {
+      const contractId = match1155[1];
+      const tokenId = parseInt(match1155[2]).toString(16);
+      const normalizedAddress = address.toLowerCase();
+      const cacheKey = `${normalizedAddress}/${contractId}/0x${tokenId}`;
+      const cachedItem = window.localStorage.getItem(cacheKey);
+
+      if (cachedItem) {
+        const item = JSON.parse(cachedItem);
+
+        if (new Date(item.expiresAt) > new Date()) {
+          setUrl(getGatewayUrl(item.url));
+          return;
+        }
+      }
+
+      const tokenField = graphApiKey ? 'erc1155Token' : 'token';
+
+      // erc721 subgraph
+      fetch(
+        graphApiKey
+          ? `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/0x7859821024e633c5dc8a4fcf86fc52e7720ce525-1`
+          : `https://api.thegraph.com/subgraphs/name/amxx/eip1155-subgraph`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json;charset=UTF-8',
+          },
+          body: JSON.stringify({
+            query: `
+          {
+            ${tokenField}(id: "${contractId}${graphApiKey ? '/' : '-'}0x${tokenId}") {
+              id
+              ${graphApiKey ? 'uri' : 'uri: URI'}
+              balances(where: { account: "${address}" }) {
+                id
+                account {
+                  id
+                }
+              }
+            }
+          }
+          `,
+          }),
+        }
+      )
+        .then(res => res.json())
+        .then(async res => {
+          if (!res.data || !res.data[tokenField]) {
+            throw new Error('invalid ERC1155 token');
+          }
+
+          const token = res.data[tokenField];
+
+          if (!token.balances || token.balances.length < 1) {
+            throw new Error('ERC1155 token not owned by address');
+          }
+
+          return token;
+        })
+        .then(token => fetch(getGatewayUrl(token.uri)))
+        .then(res => res.json())
+        .then(data => {
+          // 24 hour TTL
+          const expireDate = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
+
+          window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
+          setUrl(getGatewayUrl(data.image));
         })
         .catch(e => console.error(e)); // eslint-disable-line
     } else {
-      setUrl(uri);
+      setUrl(getGatewayUrl(uri));
     }
   }, [uri, address, graphApiKey]);
 
