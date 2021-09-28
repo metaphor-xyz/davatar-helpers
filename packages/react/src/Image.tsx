@@ -150,7 +150,7 @@ export default function Avatar({
           break;
       }
     } else if (address && match721 && match721.length === 3) {
-      const contractId = match721[1];
+      const contractId = match721[1].toLowerCase();
       const tokenId = parseInt(match721[2]).toString(16);
       const normalizedAddress = address.toLowerCase();
       const cacheKey = `${normalizedAddress}/${contractId}/0x${tokenId}`;
@@ -217,7 +217,7 @@ export default function Avatar({
         })
         .catch(e => console.error(e)); // eslint-disable-line
     } else if (address && match1155 && match1155.length === 3) {
-      const contractId = match1155[1];
+      const contractId = match1155[1].toLowerCase();
       const tokenId = parseInt(match1155[2]).toString(16);
       const normalizedAddress = address.toLowerCase();
       const cacheKey = `${normalizedAddress}/${contractId}/0x${tokenId}`;
