@@ -1,5 +1,5 @@
 import { Web3Provider, getDefaultProvider } from '@ethersproject/providers';
-import React, { useEffect, useState, ReactChild } from 'react';
+import React, { useEffect, useState, ReactChild, CSSProperties } from 'react';
 
 import Image from './Image';
 
@@ -13,6 +13,7 @@ export interface DavatarProps {
   graphApiKey?: string;
   generatedAvatarType?: 'jazzicon' | 'blockies';
   defaultComponent?: ReactChild | ReactChild[];
+  style?: CSSProperties;
 }
 
 export default function Davatar({
@@ -22,6 +23,7 @@ export default function Davatar({
   graphApiKey,
   generatedAvatarType,
   defaultComponent,
+  style,
 }: DavatarProps) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
@@ -48,6 +50,7 @@ export default function Davatar({
       graphApiKey={graphApiKey}
       generatedAvatarType={generatedAvatarType}
       defaultComponent={defaultComponent}
+      style={style}
     />
   );
 }
