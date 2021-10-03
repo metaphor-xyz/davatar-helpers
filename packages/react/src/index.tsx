@@ -1,7 +1,7 @@
 import { Web3Provider, getDefaultProvider, BaseProvider } from '@ethersproject/providers';
 import React, { useEffect, useState, ReactChild, CSSProperties } from 'react';
 
-import Image, { getCachedUrl } from './Image';
+import Image from './Image';
 
 export { default as Image } from './Image';
 
@@ -30,26 +30,39 @@ export default function Davatar({
   const [ethersProvider, setEthersProvider] = useState<BaseProvider | null>(null);
 
   useEffect(() => {
-    const eth = provider ? new Web3Provider(provider) : getDefaultProvider();
+    let eth = getDefaultProvider();
+    let chainId = null;
+    let isEthers = false;
+
+    // carlos: Only use the provided provider if ENS is actually on that chain
+    if (provider) {
+      if (provider.currentProvider?.chainId) {
+        chainId = parseInt(provider.currentProvider.chainId);
+      } else if (provider.network?.chainId) {
+        isEthers = true;
+        chainId = provider.network.chainId;
+      }
+
+      if ([1, 3, 4, 5].includes(chainId)) {
+        eth = isEthers ? (provider as BaseProvider) : new Web3Provider(provider.currentProvider);
+      } else {
+        chainId = 1;
+      }
+    }
+
     setEthersProvider(eth);
 
-    const cachedUrl = getCachedUrl(address);
-
-    if (cachedUrl) {
-      setAvatarUri(cachedUrl);
-    } else {
-      eth.lookupAddress(address).then(ensName => {
-        if (ensName) {
-          eth.getResolver(ensName).then(resolver => {
-            resolver.getText('avatar').then(avatar => {
-              if (avatar && avatar.length > 0) {
-                setAvatarUri(avatar);
-              }
-            });
+    eth.lookupAddress(address).then(ensName => {
+      if (ensName) {
+        eth.getResolver(ensName).then(resolver => {
+          resolver.getText('avatar').then(avatar => {
+            if (avatar && avatar.length > 0) {
+              setAvatarUri(avatar);
+            }
           });
-        }
-      });
-    }
+        });
+      }
+    });
   }, [address, provider]);
 
   return (

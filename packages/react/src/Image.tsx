@@ -32,9 +32,9 @@ export interface Props {
   defaultComponent?: ReactChild | ReactChild[];
 }
 
-export const getCachedUrl = (address: string) => {
-  const normalizedAddress = address.toLowerCase();
-  const cachedItem = window.localStorage.getItem(normalizedAddress);
+export const getCachedUrl = (key: string) => {
+  const normalizedKey = key.toLowerCase();
+  const cachedItem = window.localStorage.getItem(normalizedKey);
 
   if (cachedItem) {
     const item = JSON.parse(cachedItem);
@@ -98,12 +98,19 @@ export default function Avatar({
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if (!uri && address) {
+      const cachedUrl = getCachedUrl(address.toLowerCase());
+      if (cachedUrl) {
+        setUrl(cachedUrl);
+      }
+    }
+
     if (!uri) {
       return;
     }
 
-    if (address) {
-      const cachedUrl = getCachedUrl(address);
+    if (uri && address) {
+      const cachedUrl = getCachedUrl(`${address.toLowerCase()}/${uri}`);
       if (cachedUrl) {
         setUrl(cachedUrl);
       }
@@ -250,9 +257,10 @@ export default function Avatar({
         const expireDate = new Date(new Date().getTime() + CACHE_TTL);
 
         window.localStorage.setItem(normalizedAddress, JSON.stringify({ url, expiresAt: expireDate }));
+        window.localStorage.setItem(`${normalizedAddress}/${uri}`, JSON.stringify({ url, expiresAt: expireDate }));
       }
     }
-  }, [address, url]);
+  }, [address, url, uri]);
 
   let avatarImg = null;
 
