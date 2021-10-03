@@ -1,7 +1,7 @@
 import { Web3Provider, getDefaultProvider, BaseProvider } from '@ethersproject/providers';
 import React, { useEffect, useState, ReactChild, CSSProperties } from 'react';
 
-import Image from './Image';
+import Image, { getCachedUrl } from './Image';
 
 export { default as Image } from './Image';
 
@@ -32,17 +32,24 @@ export default function Davatar({
   useEffect(() => {
     const eth = provider ? new Web3Provider(provider) : getDefaultProvider();
     setEthersProvider(eth);
-    eth.lookupAddress(address).then(ensName => {
-      if (ensName) {
-        eth.getResolver(ensName).then(resolver => {
-          resolver.getText('avatar').then(avatar => {
-            if (avatar && avatar.length > 0) {
-              setAvatarUri(avatar);
-            }
+
+    const cachedUrl = getCachedUrl(address);
+
+    if (cachedUrl) {
+      setAvatarUri(cachedUrl);
+    } else {
+      eth.lookupAddress(address).then(ensName => {
+        if (ensName) {
+          eth.getResolver(ensName).then(resolver => {
+            resolver.getText('avatar').then(avatar => {
+              if (avatar && avatar.length > 0) {
+                setAvatarUri(avatar);
+              }
+            });
           });
-        });
-      }
-    });
+        }
+      });
+    }
   }, [address, provider]);
 
   return (

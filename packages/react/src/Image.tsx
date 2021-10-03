@@ -6,6 +6,9 @@ import React, { useState, useEffect, useCallback, CSSProperties, ReactChild } fr
 import Blockies from './Blockies';
 import Jazzicon from './Jazzicon';
 
+// 24 hour TTL
+const CACHE_TTL = 60 * 60 * 24 * 1000;
+
 const erc721Abi = [
   'function ownerOf(uint256 tokenId) view returns (address)',
   'function tokenURI(uint256 _tokenId) external view returns (string)',
@@ -29,7 +32,22 @@ export interface Props {
   defaultComponent?: ReactChild | ReactChild[];
 }
 
-const getGatewayUrl = (uri: string, tokenId?: string): string => {
+export const getCachedUrl = (address: string) => {
+  const normalizedAddress = address.toLowerCase();
+  const cachedItem = window.localStorage.getItem(normalizedAddress);
+
+  if (cachedItem) {
+    const item = JSON.parse(cachedItem);
+
+    if (new Date(item.expiresAt) > new Date()) {
+      return getGatewayUrl(item.url);
+    }
+  }
+
+  return null;
+};
+
+export const getGatewayUrl = (uri: string, tokenId?: string): string => {
   const match = new RegExp(/([a-z]+)(?::\/\/|\/)(.*)/).exec(uri);
 
   if (!match || match.length < 3) {
@@ -82,6 +100,13 @@ export default function Avatar({
   useEffect(() => {
     if (!uri) {
       return;
+    }
+
+    if (address) {
+      const cachedUrl = getCachedUrl(address);
+      if (cachedUrl) {
+        setUrl(cachedUrl);
+      }
     }
 
     const match = new RegExp(/([a-z]+):\/\/(.*)/).exec(uri);
@@ -171,17 +196,6 @@ export default function Avatar({
       const contractId = match721[1].toLowerCase();
       const tokenId = match721[2];
       const normalizedAddress = address.toLowerCase();
-      const cacheKey = `${normalizedAddress}/${contractId}/0x${tokenId}`;
-      const cachedItem = window.localStorage.getItem(cacheKey);
-
-      if (cachedItem) {
-        const item = JSON.parse(cachedItem);
-
-        if (new Date(item.expiresAt) > new Date()) {
-          setUrl(getGatewayUrl(item.url));
-          return;
-        }
-      }
 
       if (provider) {
         const erc721Contract = new Contract(contractId, erc721Abi, provider);
@@ -196,30 +210,12 @@ export default function Avatar({
           })
           .then((tokenURI: string) => fetch(getGatewayUrl(tokenURI, tokenId)))
           .then((res: Response) => res.json())
-          .then((data: { image: string }) => {
-            // 24 hour TTL
-            const expireDate = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
-
-            window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
-            setUrl(getGatewayUrl(data.image));
-          })
+          .then((data: { image: string }) => setUrl(getGatewayUrl(data.image)))
           .catch((e: Error) => console.error(e)); // eslint-disable-line
       }
     } else if (address && match1155 && match1155.length === 3) {
       const contractId = match1155[1].toLowerCase();
       const tokenId = match1155[2];
-      const normalizedAddress = address.toLowerCase();
-      const cacheKey = `${normalizedAddress}/${contractId}/0x${tokenId}`;
-      const cachedItem = window.localStorage.getItem(cacheKey);
-
-      if (cachedItem) {
-        const item = JSON.parse(cachedItem);
-
-        if (new Date(item.expiresAt) > new Date()) {
-          setUrl(getGatewayUrl(item.url));
-          return;
-        }
-      }
 
       if (provider) {
         const erc1155Contract = new Contract(contractId, erc1155Abi, provider);
@@ -234,13 +230,7 @@ export default function Avatar({
           })
           .then((tokenURI: string) => fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16))))
           .then((res: Response) => res.json())
-          .then((data: { image: string }) => {
-            // 24 hour TTL
-            const expireDate = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
-
-            window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
-            setUrl(getGatewayUrl(data.image));
-          })
+          .then((data: { image: string }) => setUrl(getGatewayUrl(data.image)))
           .catch((e: Error) => console.error(e)); // eslint-disable-line
       }
     } else {
@@ -248,7 +238,22 @@ export default function Avatar({
     }
   }, [uri, address, provider]);
 
-  const onLoad = useCallback(() => setLoaded(true), []);
+  const onLoad = useCallback(() => {
+    setLoaded(true);
+
+    if (address) {
+      const normalizedAddress = address.toLowerCase();
+      const cachedItem = window.localStorage.getItem(normalizedAddress);
+      const item = cachedItem && JSON.parse(cachedItem);
+
+      if (!item || new Date(item.expiresAt) > new Date()) {
+        const expireDate = new Date(new Date().getTime() + CACHE_TTL);
+
+        window.localStorage.setItem(normalizedAddress, JSON.stringify({ url, expiresAt: expireDate }));
+      }
+    }
+  }, [address, url]);
+
   let avatarImg = null;
 
   const cssStyle = {
