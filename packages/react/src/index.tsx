@@ -1,4 +1,4 @@
-import { Web3Provider, getDefaultProvider } from '@ethersproject/providers';
+import { Web3Provider, getDefaultProvider, BaseProvider } from '@ethersproject/providers';
 import React, { useEffect, useState, ReactChild, CSSProperties } from 'react';
 
 import Image from './Image';
@@ -10,6 +10,7 @@ export interface DavatarProps {
   address: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   provider?: any;
+  // deprecated
   graphApiKey?: string;
   generatedAvatarType?: 'jazzicon' | 'blockies';
   defaultComponent?: ReactChild | ReactChild[];
@@ -26,9 +27,11 @@ export default function Davatar({
   style,
 }: DavatarProps) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [ethersProvider, setEthersProvider] = useState<BaseProvider | null>(null);
 
   useEffect(() => {
     const eth = provider ? new Web3Provider(provider) : getDefaultProvider();
+    setEthersProvider(eth);
     eth.lookupAddress(address).then(ensName => {
       if (ensName) {
         eth.getResolver(ensName).then(resolver => {
@@ -48,6 +51,7 @@ export default function Davatar({
       address={address}
       uri={avatarUri}
       graphApiKey={graphApiKey}
+      provider={ethersProvider}
       generatedAvatarType={generatedAvatarType}
       defaultComponent={defaultComponent}
       style={style}

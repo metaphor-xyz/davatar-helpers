@@ -1,7 +1,20 @@
+import { Contract } from '@ethersproject/contracts';
+import { BaseProvider } from '@ethersproject/providers';
+import BigNumber from 'bn.js';
 import React, { useState, useEffect, useCallback, CSSProperties, ReactChild } from 'react';
 
 import Blockies from './Blockies';
 import Jazzicon from './Jazzicon';
+
+const erc721Abi = [
+  'function ownerOf(uint256 tokenId) view returns (address)',
+  'function tokenURI(uint256 _tokenId) external view returns (string)',
+];
+
+const erc1155Abi = [
+  'function balanceOf(address _owner, uint256 _id) view returns (uint256)',
+  'function uri(uint256 _id) view returns (string)',
+];
 
 export interface Props {
   size: number;
@@ -9,13 +22,14 @@ export interface Props {
   address?: string | null;
   style?: CSSProperties;
   className?: string;
-  // 698d3c5351720e4ca3a363dbd33d76d2
+  // deprecated
   graphApiKey?: string;
+  provider?: BaseProvider | null;
   generatedAvatarType?: 'jazzicon' | 'blockies';
   defaultComponent?: ReactChild | ReactChild[];
 }
 
-const getGatewayUrl = (uri: string): string => {
+const getGatewayUrl = (uri: string, tokenId?: string): string => {
   const match = new RegExp(/([a-z]+)(?::\/\/|\/)(.*)/).exec(uri);
 
   if (!match || match.length < 3) {
@@ -23,29 +37,33 @@ const getGatewayUrl = (uri: string): string => {
   }
 
   const id = match[2];
+  let url = uri;
 
   switch (match[1]) {
     case 'ar': {
-      return `https://arweave.net/${id}`;
+      url = `https://arweave.net/${id}`;
+      break;
     }
     case 'ipfs':
       if (id.includes('ipfs') || id.includes('ipns')) {
-        return `https://gateway.ipfs.io/${id}`;
+        url = `https://gateway.ipfs.io/${id}`;
       } else {
-        return `https://gateway.ipfs.io/ipfs/${id}`;
+        url = `https://gateway.ipfs.io/ipfs/${id}`;
       }
+      break;
     case 'ipns':
       if (id.includes('ipfs') || id.includes('ipns')) {
-        return `https://gateway.ipfs.io/${id}`;
+        url = `https://gateway.ipfs.io/${id}`;
       } else {
-        return `https://gateway.ipfs.io/ipns/${id}`;
+        url = `https://gateway.ipfs.io/ipns/${id}`;
       }
+      break;
     case 'http':
     case 'https':
-      return uri;
+      break;
   }
 
-  return uri;
+  return tokenId ? url.replaceAll('{id}', tokenId) : url;
 };
 
 export default function Avatar({
@@ -54,7 +72,7 @@ export default function Avatar({
   className,
   size,
   address,
-  graphApiKey,
+  provider,
   generatedAvatarType,
   defaultComponent,
 }: Props) {
@@ -151,7 +169,7 @@ export default function Avatar({
       }
     } else if (address && match721 && match721.length === 3) {
       const contractId = match721[1].toLowerCase();
-      const tokenId = parseInt(match721[2]).toString(16);
+      const tokenId = match721[2];
       const normalizedAddress = address.toLowerCase();
       const cacheKey = `${normalizedAddress}/${contractId}/0x${tokenId}`;
       const cachedItem = window.localStorage.getItem(cacheKey);
@@ -165,60 +183,31 @@ export default function Avatar({
         }
       }
 
-      const tokenField = graphApiKey ? 'erc721Token' : 'token';
-
-      // erc721 subgraph
-      fetch(
-        graphApiKey
-          ? `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/0x7859821024e633c5dc8a4fcf86fc52e7720ce525-0`
-          : `https://api.thegraph.com/subgraphs/name/amxx/eip721-subgraph`,
-        {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json;charset=UTF-8',
-          },
-          body: JSON.stringify({
-            query: `
-          {
-            ${tokenField}(id: "${contractId}${graphApiKey ? '/' : '-'}0x${tokenId}") {
-              id
-              owner {
-                id
-              }
-              uri
+      if (provider) {
+        const erc721Contract = new Contract(contractId, erc721Abi, provider);
+        erc721Contract
+          .ownerOf(tokenId)
+          .then((owner: string | null) => {
+            if (!owner || owner.toLowerCase() !== normalizedAddress) {
+              throw new Error('ERC721 token not owned by address');
             }
-          }
-          `,
-          }),
-        }
-      )
-        .then(res => res.json())
-        .then(async res => {
-          if (!res.data || !res.data[tokenField]) {
-            throw new Error('invalid ERC721 token');
-          }
 
-          const token = res.data[tokenField];
+            return erc721Contract.tokenURI(tokenId);
+          })
+          .then((tokenURI: string) => fetch(getGatewayUrl(tokenURI, tokenId)))
+          .then((res: Response) => res.json())
+          .then((data: { image: string }) => {
+            // 24 hour TTL
+            const expireDate = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
 
-          if (token.owner.id.toLowerCase() !== normalizedAddress) {
-            throw new Error('ERC721 token not owned by address');
-          }
-
-          return token;
-        })
-        .then(token => fetch(getGatewayUrl(token.uri)))
-        .then(res => res.json())
-        .then(data => {
-          // 24 hour TTL
-          const expireDate = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
-
-          window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
-          setUrl(getGatewayUrl(data.image));
-        })
-        .catch(e => console.error(e)); // eslint-disable-line
+            window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
+            setUrl(getGatewayUrl(data.image));
+          })
+          .catch((e: Error) => console.error(e)); // eslint-disable-line
+      }
     } else if (address && match1155 && match1155.length === 3) {
       const contractId = match1155[1].toLowerCase();
-      const tokenId = parseInt(match1155[2]).toString(16);
+      const tokenId = match1155[2];
       const normalizedAddress = address.toLowerCase();
       const cacheKey = `${normalizedAddress}/${contractId}/0x${tokenId}`;
       const cachedItem = window.localStorage.getItem(cacheKey);
@@ -232,64 +221,32 @@ export default function Avatar({
         }
       }
 
-      const tokenField = graphApiKey ? 'erc1155Token' : 'token';
-
-      // erc721 subgraph
-      fetch(
-        graphApiKey
-          ? `https://gateway.thegraph.com/api/${graphApiKey}/subgraphs/id/0x7859821024e633c5dc8a4fcf86fc52e7720ce525-1`
-          : `https://api.thegraph.com/subgraphs/name/amxx/eip1155-subgraph`,
-        {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json;charset=UTF-8',
-          },
-          body: JSON.stringify({
-            query: `
-          {
-            ${tokenField}(id: "${contractId}${graphApiKey ? '/' : '-'}0x${tokenId}") {
-              id
-              ${graphApiKey ? 'uri' : 'uri: URI'}
-              balances(where: { account: "${address}" }) {
-                id
-                account {
-                  id
-                }
-              }
+      if (provider) {
+        const erc1155Contract = new Contract(contractId, erc1155Abi, provider);
+        erc1155Contract
+          .balanceOf(address, tokenId)
+          .then((balance: BigNumber) => {
+            if (balance.isZero()) {
+              throw new Error('ERC1155 token not owned by address');
             }
-          }
-          `,
-          }),
-        }
-      )
-        .then(res => res.json())
-        .then(async res => {
-          if (!res.data || !res.data[tokenField]) {
-            throw new Error('invalid ERC1155 token');
-          }
 
-          const token = res.data[tokenField];
+            return erc1155Contract.uri(tokenId);
+          })
+          .then((tokenURI: string) => fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16))))
+          .then((res: Response) => res.json())
+          .then((data: { image: string }) => {
+            // 24 hour TTL
+            const expireDate = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
 
-          if (!token.balances || token.balances.length < 1) {
-            throw new Error('ERC1155 token not owned by address');
-          }
-
-          return token;
-        })
-        .then(token => fetch(getGatewayUrl(token.uri)))
-        .then(res => res.json())
-        .then(data => {
-          // 24 hour TTL
-          const expireDate = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
-
-          window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
-          setUrl(getGatewayUrl(data.image));
-        })
-        .catch(e => console.error(e)); // eslint-disable-line
+            window.localStorage.setItem(cacheKey, JSON.stringify({ url: data.image, expiresAt: expireDate }));
+            setUrl(getGatewayUrl(data.image));
+          })
+          .catch((e: Error) => console.error(e)); // eslint-disable-line
+      }
     } else {
       setUrl(getGatewayUrl(uri));
     }
-  }, [uri, address, graphApiKey]);
+  }, [uri, address, provider]);
 
   const onLoad = useCallback(() => setLoaded(true), []);
   let avatarImg = null;
