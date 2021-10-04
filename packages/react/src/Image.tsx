@@ -34,7 +34,7 @@ export interface Props {
 
 export const getCachedUrl = (key: string) => {
   const normalizedKey = key.toLowerCase();
-  const cachedItem = window.localStorage.getItem(normalizedKey);
+  const cachedItem = window.localStorage.getItem(`davatar/${normalizedKey}`);
 
   if (cachedItem) {
     const item = JSON.parse(cachedItem);
@@ -215,7 +215,7 @@ export default function Avatar({
 
             return erc721Contract.tokenURI(tokenId);
           })
-          .then((tokenURI: string) => fetch(getGatewayUrl(tokenURI, tokenId)))
+          .then((tokenURI: string) => fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16))))
           .then((res: Response) => res.json())
           .then((data: { image: string }) => setUrl(getGatewayUrl(data.image)))
           .catch((e: Error) => console.error(e)); // eslint-disable-line
@@ -256,8 +256,11 @@ export default function Avatar({
       if (!item || new Date(item.expiresAt) > new Date()) {
         const expireDate = new Date(new Date().getTime() + CACHE_TTL);
 
-        window.localStorage.setItem(normalizedAddress, JSON.stringify({ url, expiresAt: expireDate }));
-        window.localStorage.setItem(`${normalizedAddress}/${uri}`, JSON.stringify({ url, expiresAt: expireDate }));
+        window.localStorage.setItem(`davatar/${normalizedAddress}`, JSON.stringify({ url, expiresAt: expireDate }));
+        window.localStorage.setItem(
+          `davatar/${normalizedAddress}/${uri}`,
+          JSON.stringify({ url, expiresAt: expireDate })
+        );
       }
     }
   }, [address, url, uri]);
