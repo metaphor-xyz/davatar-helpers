@@ -30,7 +30,7 @@ export default function Davatar({
   const [ethersProvider, setEthersProvider] = useState<BaseProvider | null>(null);
 
   useEffect(() => {
-    let eth = getDefaultProvider();
+    let eth: BaseProvider;
     let chainId = null;
     let isEthers = false;
 
@@ -50,6 +50,9 @@ export default function Davatar({
       }
     }
 
+    if (!eth) {
+      eth = getDefaultProvider();
+    }
     setEthersProvider(eth);
 
     eth.lookupAddress(address).then(ensName => {
