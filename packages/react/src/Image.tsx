@@ -109,6 +109,13 @@ export default function Avatar({
       return;
     }
 
+    if (uri) {
+      const cachedUrl = getCachedUrl(uri);
+      if (cachedUrl) {
+        setUrl(cachedUrl);
+      }
+    }
+
     if (uri && address) {
       const cachedUrl = getCachedUrl(`${address.toLowerCase()}/${uri}`);
       if (cachedUrl) {
@@ -199,46 +206,49 @@ export default function Avatar({
           setUrl(uri);
           break;
       }
-    } else if (address && match721 && match721.length === 3) {
+    } else if (match721 && match721.length === 3) {
       const contractId = match721[1].toLowerCase();
       const tokenId = match721[2];
-      const normalizedAddress = address.toLowerCase();
+      const normalizedAddress = address?.toLowerCase();
 
       if (provider) {
         const erc721Contract = new Contract(contractId, erc721Abi, provider);
-        erc721Contract
-          .ownerOf(tokenId)
-          .then((owner: string | null) => {
+
+        (async () => {
+          if (normalizedAddress) {
+            const owner = await erc721Contract.ownerOf(tokenId);
+
             if (!owner || owner.toLowerCase() !== normalizedAddress) {
               throw new Error('ERC721 token not owned by address');
             }
+          }
 
-            return erc721Contract.tokenURI(tokenId);
-          })
-          .then((tokenURI: string) => fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16))))
-          .then((res: Response) => res.json())
-          .then((data: { image: string }) => setUrl(getGatewayUrl(data.image)))
-          .catch((e: Error) => console.error(e)); // eslint-disable-line
+          const tokenURI = await erc721Contract.tokenURI(tokenId);
+          const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
+          const data = (await res.json()) as { image: string };
+          setUrl(getGatewayUrl(data.image));
+        })();
       }
-    } else if (address && match1155 && match1155.length === 3) {
+    } else if (match1155 && match1155.length === 3) {
       const contractId = match1155[1].toLowerCase();
       const tokenId = match1155[2];
 
       if (provider) {
         const erc1155Contract = new Contract(contractId, erc1155Abi, provider);
-        erc1155Contract
-          .balanceOf(address, tokenId)
-          .then((balance: BigNumber) => {
+
+        (async () => {
+          if (address) {
+            const balance: BigNumber = await erc1155Contract.balanceOf(address, tokenId);
             if (balance.isZero()) {
               throw new Error('ERC1155 token not owned by address');
             }
+          }
 
-            return erc1155Contract.uri(tokenId);
-          })
-          .then((tokenURI: string) => fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16))))
-          .then((res: Response) => res.json())
-          .then((data: { image: string }) => setUrl(getGatewayUrl(data.image)))
-          .catch((e: Error) => console.error(e)); // eslint-disable-line
+          const tokenURI = await erc1155Contract.uri(tokenId);
+          const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
+          const data = (await res.json()) as { image: string };
+          setUrl(getGatewayUrl(data.image));
+        })();
       }
     } else {
       setUrl(getGatewayUrl(uri));
