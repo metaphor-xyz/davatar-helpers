@@ -19,7 +19,7 @@ const erc1155Abi = [
   'function uri(uint256 _id) view returns (string)',
 ];
 
-export interface Props {
+export type ImageProps = {
   size: number;
   uri?: string | null;
   address?: string | null;
@@ -30,7 +30,7 @@ export interface Props {
   provider?: BaseProvider | null;
   generatedAvatarType?: 'jazzicon' | 'blockies';
   defaultComponent?: ReactChild | ReactChild[];
-}
+};
 
 export const getCachedUrl = (key: string) => {
   const normalizedKey = key.toLowerCase();
@@ -84,7 +84,7 @@ export const getGatewayUrl = (uri: string, tokenId?: string): string => {
   return tokenId ? url.replaceAll('{id}', tokenId) : url;
 };
 
-export default function Avatar({
+export default function Image({
   uri,
   style,
   className,
@@ -93,7 +93,7 @@ export default function Avatar({
   provider,
   generatedAvatarType,
   defaultComponent,
-}: Props) {
+}: ImageProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
