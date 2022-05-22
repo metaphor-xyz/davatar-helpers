@@ -39,8 +39,11 @@
     "react": ">=16.8"
   },
   "dependencies": {
-    "@ethersproject/contracts": "^5.4.1",
-    "@ethersproject/providers": "^5.4.5",
+    "@ethersproject/abstract-signer": "^5",
+    "@ethersproject/contracts": "^5",
+    "@ethersproject/logger": "^5",
+    "@ethersproject/properties": "^5",
+    "@ethersproject/providers": "^5",
     "@types/react-blockies": "^1.4.1",
     "bn.js": "^5.2.0",
     "color": "^3.2.1",

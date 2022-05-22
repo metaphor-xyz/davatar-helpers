@@ -1,8 +1,9 @@
 import { Contract } from '@ethersproject/contracts';
 import { BaseProvider } from '@ethersproject/providers';
 import BigNumber from 'bn.js';
-import React, { useState, useEffect, useCallback, CSSProperties, ReactChild } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, CSSProperties, ReactChild } from 'react';
 
+import { useAvatarEthersProvider } from './AvatarProvider';
 import Blockies from './Blockies';
 import Jazzicon from './Jazzicon';
 
@@ -44,7 +45,7 @@ export type ImageProps = {
    */
   graphApiKey?: string;
   /**
-   * An ethers or web3.js provider
+   * An ethers provider
    */
   provider?: BaseProvider | null;
   /**
@@ -121,6 +122,8 @@ export default function Image({
 }: ImageProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const avatarEthersProvider = useAvatarEthersProvider();
+  const ethersProvider = useMemo(() => provider || avatarEthersProvider, [provider, avatarEthersProvider]);
 
   useEffect(() => {
     if (!uri && address) {
@@ -138,6 +141,7 @@ export default function Image({
       const cachedUrl = getCachedUrl(uri);
       if (cachedUrl) {
         setUrl(cachedUrl);
+        return;
       }
     }
 
@@ -145,6 +149,7 @@ export default function Image({
       const cachedUrl = getCachedUrl(`${address.toLowerCase()}/${uri}`);
       if (cachedUrl) {
         setUrl(cachedUrl);
+        return;
       }
     }
 
@@ -236,49 +241,45 @@ export default function Image({
       const tokenId = match721[2];
       const normalizedAddress = address?.toLowerCase();
 
-      if (provider) {
-        const erc721Contract = new Contract(contractId, erc721Abi, provider);
+      const erc721Contract = new Contract(contractId, erc721Abi, ethersProvider);
 
-        (async () => {
-          if (normalizedAddress) {
-            const owner = await erc721Contract.ownerOf(tokenId);
+      (async () => {
+        if (normalizedAddress) {
+          const owner = await erc721Contract.ownerOf(tokenId);
 
-            if (!owner || owner.toLowerCase() !== normalizedAddress) {
-              throw new Error('ERC721 token not owned by address');
-            }
+          if (!owner || owner.toLowerCase() !== normalizedAddress) {
+            throw new Error('ERC721 token not owned by address');
           }
+        }
 
-          const tokenURI = await erc721Contract.tokenURI(tokenId);
-          const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
-          const data = (await res.json()) as { image: string };
-          setUrl(getGatewayUrl(data.image));
-        })();
-      }
+        const tokenURI = await erc721Contract.tokenURI(tokenId);
+        const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
+        const data = (await res.json()) as { image: string };
+        setUrl(getGatewayUrl(data.image));
+      })();
     } else if (match1155 && match1155.length === 3) {
       const contractId = match1155[1].toLowerCase();
       const tokenId = match1155[2];
 
-      if (provider) {
-        const erc1155Contract = new Contract(contractId, erc1155Abi, provider);
+      const erc1155Contract = new Contract(contractId, erc1155Abi, ethersProvider);
 
-        (async () => {
-          if (address) {
-            const balance: BigNumber = await erc1155Contract.balanceOf(address, tokenId);
-            if (balance.isZero()) {
-              throw new Error('ERC1155 token not owned by address');
-            }
+      (async () => {
+        if (address) {
+          const balance: BigNumber = await erc1155Contract.balanceOf(address, tokenId);
+          if (balance.isZero()) {
+            throw new Error('ERC1155 token not owned by address');
           }
+        }
 
-          const tokenURI = await erc1155Contract.uri(tokenId);
-          const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
-          const data = (await res.json()) as { image: string };
-          setUrl(getGatewayUrl(data.image));
-        })();
-      }
+        const tokenURI = await erc1155Contract.uri(tokenId);
+        const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
+        const data = (await res.json()) as { image: string };
+        setUrl(getGatewayUrl(data.image));
+      })();
     } else {
       setUrl(getGatewayUrl(uri));
     }
-  }, [uri, address, provider]);
+  }, [uri, address, ethersProvider]);
 
   const onLoad = useCallback(() => {
     setLoaded(true);

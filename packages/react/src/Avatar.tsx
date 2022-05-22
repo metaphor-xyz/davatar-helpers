@@ -1,6 +1,7 @@
-import { Web3Provider, getDefaultProvider, BaseProvider } from '@ethersproject/providers';
+import { Web3Provider, BaseProvider } from '@ethersproject/providers';
 import React, { useEffect, useState, ReactChild, CSSProperties } from 'react';
 
+import { useAvatarEthersProvider } from './AvatarProvider';
 import Image from './Image';
 
 export type AvatarProps = {
@@ -40,9 +41,10 @@ export type AvatarProps = {
 export default function Avatar({ size, address, provider, generatedAvatarType, defaultComponent, style }: AvatarProps) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [ethersProvider, setEthersProvider] = useState<BaseProvider | null>(null);
+  const avatarEthersProvider = useAvatarEthersProvider();
 
   useEffect(() => {
-    let eth = getDefaultProvider();
+    let eth = avatarEthersProvider;
     let chainId = null;
     let isEthers = false;
 
@@ -75,7 +77,7 @@ export default function Avatar({ size, address, provider, generatedAvatarType, d
         });
       }
     });
-  }, [address, provider]);
+  }, [address, provider, avatarEthersProvider]);
 
   return (
     <Image
