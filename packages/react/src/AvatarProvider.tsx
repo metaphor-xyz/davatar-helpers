@@ -27,10 +27,6 @@ export type AvatarProviderProps = {
 export function AvatarProvider({ provider, batchLookups, children }: AvatarProviderProps) {
   const finalProvider = useMemo(() => {
     if (provider) {
-      if (provider.network.chainId !== 1) {
-        return getDefaultProvider();
-      }
-
       if (batchLookups) {
         return new JsonRpcMulticallProvider(provider);
       }
