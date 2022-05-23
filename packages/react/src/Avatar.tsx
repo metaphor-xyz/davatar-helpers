@@ -3,6 +3,7 @@ import React, { useEffect, useState, ReactChild, CSSProperties } from 'react';
 
 import { useAvatarEthersProvider } from './AvatarProvider';
 import Image from './Image';
+import { getCachedUrl } from './cache';
 
 export type AvatarProps = {
   /**
@@ -66,17 +67,19 @@ export default function Avatar({ size, address, provider, generatedAvatarType, d
 
     setEthersProvider(eth);
 
-    eth.lookupAddress(address).then(ensName => {
-      if (ensName) {
-        eth.getResolver(ensName).then(resolver => {
-          resolver.getText('avatar').then(avatar => {
-            if (avatar && avatar.length > 0) {
-              setAvatarUri(avatar);
-            }
+    if (!getCachedUrl(address)) {
+      eth.lookupAddress(address).then(ensName => {
+        if (ensName) {
+          eth.getResolver(ensName).then(resolver => {
+            resolver.getText('avatar').then(avatar => {
+              if (avatar && avatar.length > 0) {
+                setAvatarUri(avatar);
+              }
+            });
           });
-        });
-      }
-    });
+        }
+      });
+    }
   }, [address, provider, avatarEthersProvider]);
 
   return (

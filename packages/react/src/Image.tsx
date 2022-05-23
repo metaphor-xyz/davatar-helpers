@@ -6,9 +6,8 @@ import React, { useState, useEffect, useCallback, useMemo, CSSProperties, ReactC
 import { useAvatarEthersProvider } from './AvatarProvider';
 import Blockies from './Blockies';
 import Jazzicon from './Jazzicon';
-
-// 24 hour TTL
-const CACHE_TTL = 60 * 60 * 24 * 1000;
+import { storeCachedURI, getCachedUrl } from './cache';
+import { getGatewayUrl } from './resolve';
 
 const erc721Abi = [
   'function ownerOf(uint256 tokenId) view returns (address)',
@@ -56,58 +55,6 @@ export type ImageProps = {
    * A default component to render if image isn't loaded
    */
   defaultComponent?: ReactChild | ReactChild[];
-};
-
-export const getCachedUrl = (key: string) => {
-  const normalizedKey = key.toLowerCase();
-  const cachedItem = window.localStorage.getItem(`davatar/${normalizedKey}`);
-
-  if (cachedItem) {
-    const item = JSON.parse(cachedItem);
-
-    if (new Date(item.expiresAt) > new Date()) {
-      return getGatewayUrl(item.url);
-    }
-  }
-
-  return null;
-};
-
-export const getGatewayUrl = (uri: string, tokenId?: string): string => {
-  const match = new RegExp(/([a-z]+)(?::\/\/|\/)(.*)/).exec(uri);
-
-  if (!match || match.length < 3) {
-    return uri;
-  }
-
-  const id = match[2];
-  let url = uri;
-
-  switch (match[1]) {
-    case 'ar': {
-      url = `https://arweave.net/${id}`;
-      break;
-    }
-    case 'ipfs':
-      if (id.includes('ipfs') || id.includes('ipns')) {
-        url = `https://gateway.ipfs.io/${id}`;
-      } else {
-        url = `https://gateway.ipfs.io/ipfs/${id}`;
-      }
-      break;
-    case 'ipns':
-      if (id.includes('ipfs') || id.includes('ipns')) {
-        url = `https://gateway.ipfs.io/${id}`;
-      } else {
-        url = `https://gateway.ipfs.io/ipns/${id}`;
-      }
-      break;
-    case 'http':
-    case 'https':
-      break;
-  }
-
-  return tokenId ? url.replaceAll('{id}', tokenId) : url;
 };
 
 export default function Image({
@@ -284,22 +231,10 @@ export default function Image({
   const onLoad = useCallback(() => {
     setLoaded(true);
 
-    if (address) {
-      const normalizedAddress = address.toLowerCase();
-      const cachedItem = window.localStorage.getItem(normalizedAddress);
-      const item = cachedItem && JSON.parse(cachedItem);
-
-      if (!item || new Date(item.expiresAt) > new Date()) {
-        const expireDate = new Date(new Date().getTime() + CACHE_TTL);
-
-        window.localStorage.setItem(`davatar/${normalizedAddress}`, JSON.stringify({ url, expiresAt: expireDate }));
-        window.localStorage.setItem(
-          `davatar/${normalizedAddress}/${uri}`,
-          JSON.stringify({ url, expiresAt: expireDate })
-        );
-      }
+    if (address && url) {
+      storeCachedURI(address, url);
     }
-  }, [address, url, uri]);
+  }, [address, url]);
 
   let avatarImg = null;
 
