@@ -55,6 +55,12 @@ export type ImageProps = {
    * A default component to render if image isn't loaded
    */
   defaultComponent?: ReactChild | ReactChild[];
+  /**
+   * How long to cache resolved images for, in milliseconds
+   *
+   * @default 24 hours
+   */
+  cacheTTL?: number;
 };
 
 export default function Image({
@@ -66,6 +72,7 @@ export default function Image({
   provider,
   generatedAvatarType,
   defaultComponent,
+  cacheTTL,
 }: ImageProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -232,9 +239,9 @@ export default function Image({
     setLoaded(true);
 
     if (address && url) {
-      storeCachedURI(address, url);
+      storeCachedURI(address, url, cacheTTL);
     }
-  }, [address, url]);
+  }, [address, url, cacheTTL]);
 
   let avatarImg = null;
 

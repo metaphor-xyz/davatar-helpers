@@ -37,9 +37,23 @@ export type AvatarProps = {
    * Custom CSS styles to apply to the avatar <img /> tag
    */
   style?: CSSProperties;
+  /**
+   * How long to cache resolved images for, in milliseconds
+   *
+   * @default 24 hours
+   */
+  cacheTTL?: number;
 };
 
-export default function Avatar({ size, address, provider, generatedAvatarType, defaultComponent, style }: AvatarProps) {
+export default function Avatar({
+  size,
+  address,
+  provider,
+  generatedAvatarType,
+  defaultComponent,
+  style,
+  cacheTTL,
+}: AvatarProps) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [ethersProvider, setEthersProvider] = useState<BaseProvider | null>(null);
   const avatarEthersProvider = useAvatarEthersProvider();
@@ -91,6 +105,7 @@ export default function Avatar({ size, address, provider, generatedAvatarType, d
       generatedAvatarType={generatedAvatarType}
       defaultComponent={defaultComponent}
       style={style}
+      cacheTTL={cacheTTL}
     />
   );
 }
