@@ -1,13 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
 import { BaseProvider } from '@ethersproject/providers';
 import BigNumber from 'bn.js';
-import React, { useState, useEffect, useCallback, CSSProperties, ReactChild } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, CSSProperties, ReactChild } from 'react';
 
+import { useAvatarEthersProvider } from './AvatarProvider';
 import Blockies from './Blockies';
 import Jazzicon from './Jazzicon';
-
-// 24 hour TTL
-const CACHE_TTL = 60 * 60 * 24 * 1000;
+import { storeCachedURI, getCachedUrl } from './cache';
+import { getGatewayUrl } from './resolve';
 
 const erc721Abi = [
   'function ownerOf(uint256 tokenId) view returns (address)',
@@ -19,72 +19,51 @@ const erc1155Abi = [
   'function uri(uint256 _id) view returns (string)',
 ];
 
-export interface Props {
+export type ImageProps = {
+  /**
+   * The size of the avatar in pixels.
+   */
   size: number;
+  /**
+   * The URI of the image to be resolved
+   */
   uri?: string | null;
+  /**
+   * An Ethereum address
+   */
   address?: string | null;
+  /**
+   * Custom CSS styles to apply to the <img /> tag
+   */
   style?: CSSProperties;
   className?: string;
-  // deprecated
+  /**
+   * An API key for The Graph
+   *
+   * @deprecated
+   */
   graphApiKey?: string;
+  /**
+   * An ethers provider
+   */
   provider?: BaseProvider | null;
+  /**
+   * The kind of generated avatar to display if image isn't loaded
+   */
   generatedAvatarType?: 'jazzicon' | 'blockies';
+  /**
+   * A default component to render if image isn't loaded
+   */
   defaultComponent?: ReactChild | ReactChild[];
-}
-
-export const getCachedUrl = (key: string) => {
-  const normalizedKey = key.toLowerCase();
-  const cachedItem = window.localStorage.getItem(`davatar/${normalizedKey}`);
-
-  if (cachedItem) {
-    const item = JSON.parse(cachedItem);
-
-    if (new Date(item.expiresAt) > new Date()) {
-      return getGatewayUrl(item.url);
-    }
-  }
-
-  return null;
+  /**
+   * How long to cache resolved images for, in milliseconds
+   *
+   * @default 24 hours
+   */
+  cacheTTL?: number;
 };
 
-export const getGatewayUrl = (uri: string, tokenId?: string): string => {
-  const match = new RegExp(/([a-z]+)(?::\/\/|\/)(.*)/).exec(uri);
-
-  if (!match || match.length < 3) {
-    return uri;
-  }
-
-  const id = match[2];
-  let url = uri;
-
-  switch (match[1]) {
-    case 'ar': {
-      url = `https://arweave.net/${id}`;
-      break;
-    }
-    case 'ipfs':
-      if (id.includes('ipfs') || id.includes('ipns')) {
-        url = `https://gateway.ipfs.io/${id}`;
-      } else {
-        url = `https://gateway.ipfs.io/ipfs/${id}`;
-      }
-      break;
-    case 'ipns':
-      if (id.includes('ipfs') || id.includes('ipns')) {
-        url = `https://gateway.ipfs.io/${id}`;
-      } else {
-        url = `https://gateway.ipfs.io/ipns/${id}`;
-      }
-      break;
-    case 'http':
-    case 'https':
-      break;
-  }
-
-  return tokenId ? url.replaceAll('{id}', tokenId) : url;
-};
-
-export default function Avatar({
+export default function Image({
   uri,
   style,
   className,
@@ -93,9 +72,12 @@ export default function Avatar({
   provider,
   generatedAvatarType,
   defaultComponent,
-}: Props) {
+  cacheTTL,
+}: ImageProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const avatarEthersProvider = useAvatarEthersProvider();
+  const ethersProvider = useMemo(() => provider || avatarEthersProvider, [provider, avatarEthersProvider]);
 
   useEffect(() => {
     if (!uri && address) {
@@ -113,6 +95,7 @@ export default function Avatar({
       const cachedUrl = getCachedUrl(uri);
       if (cachedUrl) {
         setUrl(cachedUrl);
+        return;
       }
     }
 
@@ -120,6 +103,7 @@ export default function Avatar({
       const cachedUrl = getCachedUrl(`${address.toLowerCase()}/${uri}`);
       if (cachedUrl) {
         setUrl(cachedUrl);
+        return;
       }
     }
 
@@ -211,69 +195,53 @@ export default function Avatar({
       const tokenId = match721[2];
       const normalizedAddress = address?.toLowerCase();
 
-      if (provider) {
-        const erc721Contract = new Contract(contractId, erc721Abi, provider);
+      const erc721Contract = new Contract(contractId, erc721Abi, ethersProvider);
 
-        (async () => {
-          if (normalizedAddress) {
-            const owner = await erc721Contract.ownerOf(tokenId);
+      (async () => {
+        if (normalizedAddress) {
+          const owner = await erc721Contract.ownerOf(tokenId);
 
-            if (!owner || owner.toLowerCase() !== normalizedAddress) {
-              throw new Error('ERC721 token not owned by address');
-            }
+          if (!owner || owner.toLowerCase() !== normalizedAddress) {
+            throw new Error('ERC721 token not owned by address');
           }
+        }
 
-          const tokenURI = await erc721Contract.tokenURI(tokenId);
-          const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
-          const data = (await res.json()) as { image: string };
-          setUrl(getGatewayUrl(data.image));
-        })();
-      }
+        const tokenURI = await erc721Contract.tokenURI(tokenId);
+        const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
+        const data = (await res.json()) as { image: string };
+        setUrl(getGatewayUrl(data.image));
+      })();
     } else if (match1155 && match1155.length === 3) {
       const contractId = match1155[1].toLowerCase();
       const tokenId = match1155[2];
 
-      if (provider) {
-        const erc1155Contract = new Contract(contractId, erc1155Abi, provider);
+      const erc1155Contract = new Contract(contractId, erc1155Abi, ethersProvider);
 
-        (async () => {
-          if (address) {
-            const balance: BigNumber = await erc1155Contract.balanceOf(address, tokenId);
-            if (balance.isZero()) {
-              throw new Error('ERC1155 token not owned by address');
-            }
+      (async () => {
+        if (address) {
+          const balance: BigNumber = await erc1155Contract.balanceOf(address, tokenId);
+          if (balance.isZero()) {
+            throw new Error('ERC1155 token not owned by address');
           }
+        }
 
-          const tokenURI = await erc1155Contract.uri(tokenId);
-          const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
-          const data = (await res.json()) as { image: string };
-          setUrl(getGatewayUrl(data.image));
-        })();
-      }
+        const tokenURI = await erc1155Contract.uri(tokenId);
+        const res = await fetch(getGatewayUrl(tokenURI, new BigNumber(tokenId).toString(16)));
+        const data = (await res.json()) as { image: string };
+        setUrl(getGatewayUrl(data.image));
+      })();
     } else {
       setUrl(getGatewayUrl(uri));
     }
-  }, [uri, address, provider]);
+  }, [uri, address, ethersProvider]);
 
   const onLoad = useCallback(() => {
     setLoaded(true);
 
-    if (address) {
-      const normalizedAddress = address.toLowerCase();
-      const cachedItem = window.localStorage.getItem(normalizedAddress);
-      const item = cachedItem && JSON.parse(cachedItem);
-
-      if (!item || new Date(item.expiresAt) > new Date()) {
-        const expireDate = new Date(new Date().getTime() + CACHE_TTL);
-
-        window.localStorage.setItem(`davatar/${normalizedAddress}`, JSON.stringify({ url, expiresAt: expireDate }));
-        window.localStorage.setItem(
-          `davatar/${normalizedAddress}/${uri}`,
-          JSON.stringify({ url, expiresAt: expireDate })
-        );
-      }
+    if (address && url) {
+      storeCachedURI(address, url, cacheTTL);
     }
-  }, [address, url, uri]);
+  }, [address, url, cacheTTL]);
 
   let avatarImg = null;
 
