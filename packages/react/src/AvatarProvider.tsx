@@ -16,7 +16,7 @@ export type AvatarProviderProps = {
   /**
    * An ethers provider
    */
-  provider: BaseProvider;
+  provider?: BaseProvider;
   /**
    * If true, ethers lookups will be batched in multicalls
    * for more efficient RPC calls
@@ -26,7 +26,7 @@ export type AvatarProviderProps = {
 
 export function AvatarProvider({ provider, batchLookups, children }: AvatarProviderProps) {
   const finalProvider = useMemo(
-    () => (batchLookups ? new JsonRpcMulticallProvider(provider) : provider),
+    () => (provider && batchLookups ? new JsonRpcMulticallProvider(provider) : provider || getDefaultProvider()),
     [batchLookups, provider]
   );
 
