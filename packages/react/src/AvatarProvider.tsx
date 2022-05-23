@@ -25,10 +25,21 @@ export type AvatarProviderProps = {
 } & React.PropsWithChildren<unknown>;
 
 export function AvatarProvider({ provider, batchLookups, children }: AvatarProviderProps) {
-  const finalProvider = useMemo(
-    () => (provider && batchLookups ? new JsonRpcMulticallProvider(provider) : provider || getDefaultProvider()),
-    [batchLookups, provider]
-  );
+  const finalProvider = useMemo(() => {
+    if (provider) {
+      if (provider.network.chainId !== 1) {
+        return getDefaultProvider();
+      }
+
+      if (batchLookups) {
+        return new JsonRpcMulticallProvider(provider);
+      }
+
+      return provider;
+    } else {
+      return getDefaultProvider();
+    }
+  }, [batchLookups, provider]);
 
   return <AvatarContext.Provider value={{ provider: finalProvider }}>{children}</AvatarContext.Provider>;
 }
