@@ -1,7 +1,7 @@
 import { Contract } from '@ethersproject/contracts';
 import { BaseProvider } from '@ethersproject/providers';
 import BigNumber from 'bn.js';
-import React, { useState, useEffect, useCallback, useMemo, CSSProperties, ReactChild } from 'react';
+import React, { useState, useEffect, useCallback, CSSProperties, ReactChild } from 'react';
 
 import { useAvatarEthersProvider } from './AvatarProvider';
 import Blockies from './Blockies';
@@ -76,8 +76,8 @@ export default function Image({
 }: ImageProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const avatarEthersProvider = useAvatarEthersProvider();
-  const ethersProvider = useMemo(() => provider || avatarEthersProvider, [provider, avatarEthersProvider]);
+  const avatarEthersProvider = useAvatarEthersProvider(provider);
+  const ethersProvider = avatarEthersProvider;
 
   useEffect(() => {
     if (!uri && address) {
