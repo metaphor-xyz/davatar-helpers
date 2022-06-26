@@ -40,16 +40,19 @@ export function AvatarProvider({ provider, batchLookups, children }: AvatarProvi
   return <AvatarContext.Provider value={{ provider: finalProvider }}>{children}</AvatarContext.Provider>;
 }
 
-export function useAvatarEthersProvider(provider?: BaseProvider) {
+export function useAvatarEthersProvider(provider?: BaseProvider | null) {
   const avatarContext = useContext(AvatarContext);
+  const defaultProvider = useMemo(() => {
+    if (!avatarContext) {
+      if (provider) {
+        return provider;
+      }
 
-  if (!avatarContext) {
-    if (provider) {
-      return provider;
+      return getDefaultProvider();
     }
 
-    return getDefaultProvider();
-  }
+    return avatarContext.provider;
+  }, [avatarContext, provider]);
 
-  return avatarContext.provider;
+  return defaultProvider;
 }
