@@ -1,6 +1,6 @@
 {
   "name": "@davatar/react",
-  "version": "1.10.3",
+  "version": "1.10.4",
   "description": "An ENS avatar implementation for React",
   "homepage": "https://github.com/metaphor-xyz/davatar-helpers",
   "repository": {
