@@ -56,9 +56,8 @@ If you know the avatar URI ([available URI types](https://gist.github.com/Arachn
 In order to prevent unnecessary and frequent re-querying of the blockchain for avatar metadata, the library caches fetched avatar URIs for 24 hours. This cache is maintained in local storage and looks like this:
 
 ```
-key: davatar/{wallet address} and davatar/{wallet address}/{uri}
-value: {avatar image URI}
-expiredAt: expiry datetime
+key: davatar/cache
+value: [address]{ avatar url, expiredAt: expiry datetime }
 ```
 
 ## Develop
