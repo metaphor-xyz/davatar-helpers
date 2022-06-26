@@ -40,10 +40,14 @@ export function AvatarProvider({ provider, batchLookups, children }: AvatarProvi
   return <AvatarContext.Provider value={{ provider: finalProvider }}>{children}</AvatarContext.Provider>;
 }
 
-export function useAvatarEthersProvider() {
+export function useAvatarEthersProvider(provider?: BaseProvider) {
   const avatarContext = useContext(AvatarContext);
 
   if (!avatarContext) {
+    if (provider) {
+      return provider;
+    }
+
     return getDefaultProvider();
   }
 
