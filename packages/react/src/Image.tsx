@@ -84,6 +84,8 @@ export default function Image({
       const cachedUrl = getCachedUrl(address.toLowerCase());
       if (cachedUrl) {
         setUrl(cachedUrl);
+      } else {
+        setUrl(null);
       }
     }
 
